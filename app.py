@@ -2,7 +2,7 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
-
+from itertools import permutations
 # =========================================================
 # PAGE CONFIG
 # =========================================================
@@ -166,6 +166,21 @@ def get_box_edges(vertices):
 # FAST FIT SEARCH
 # =========================================================
 
+
+def find_simple_fit(bin_l, bin_b, bin_h, pkg_l, pkg_b, pkg_h):
+
+    for dims in set(permutations([pkg_l, pkg_b, pkg_h])):
+
+        w, d, h = dims
+
+        if (
+            w <= bin_l and
+            d <= bin_b and
+            h <= bin_h
+        ):
+            return True, dims
+
+    return False, None
 def auto_find_fit(
     bin_l,
     bin_b,
@@ -259,16 +274,46 @@ pkg_vertices = create_vertices(
 # =========================================================
 # RUN SEARCH
 # =========================================================
-
 with st.spinner("Finding best rotation..."):
 
-    fits, fitted_package, best_angles, best_dims = auto_find_fit(
+    simple_fit, simple_dims = find_simple_fit(
         bin_l,
         bin_b,
         bin_h,
-        pkg_vertices,
-        rotation_step
+        pkg_l,
+        pkg_b,
+        pkg_h
     )
+
+    if simple_fit:
+
+        fits = True
+
+        w, d, h = simple_dims
+
+        fitted_package = create_vertices(
+            w,
+            d,
+            h
+        )
+
+        best_angles = (0, 0, 0)
+
+        best_dims = (
+            w,
+            d,
+            h
+        )
+
+    else:
+
+        fits, fitted_package, best_angles, best_dims = auto_find_fit(
+            bin_l,
+            bin_b,
+            bin_h,
+            pkg_vertices,
+            rotation_step
+        )
 
 # =========================================================
 # RESULTS
@@ -306,10 +351,17 @@ else:
 # CENTER PACKAGE
 # =========================================================
 
-# Shift package to center
 if fits:
 
-    fitted_package = fitted_package - fitted_package.mean(axis=0)
+    min_x = fitted_package[:, 0].min()
+    min_y = fitted_package[:, 1].min()
+    min_z = fitted_package[:, 2].min()
+
+    fitted_package += np.array([
+        (-bin_l / 2) - min_x,
+        (-bin_b / 2) - min_y,
+        (-bin_h / 2) - min_z
+    ])
 
 # =========================================================
 # CREATE EDGES
