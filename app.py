@@ -8,11 +8,11 @@ import plotly.graph_objects as go
 # =========================================================
 
 st.set_page_config(
-    page_title="Fast 3D Box Fitness Checker",
+    page_title="PackWise",
     layout="wide"
 )
 
-st.title("📦 Fast 3D Box Fitness Checker")
+st.title("📦 PackWise-3D Box Fitness Checker")
 
 st.write(
     "Automatically finds the best rotation "
