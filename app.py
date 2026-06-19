@@ -8,11 +8,11 @@ from itertools import permutations
 # =========================================================
 
 st.set_page_config(
-    page_title="PackWise",
+    page_title="Fast 3D Box Fitness Checker",
     layout="wide"
 )
 
-st.title("📦 PackWise-3D Box Fitness Checker")
+st.title("📦 Fast 3D Box Fitness Checker")
 
 st.write(
     "Automatically finds the best rotation "
@@ -28,19 +28,19 @@ st.sidebar.header("Bin Dimensions")
 bin_l = st.sidebar.number_input(
     "Bin Length",
     min_value=1.0,
-    value=10.0
+    value=24.0
 )
 
 bin_b = st.sidebar.number_input(
     "Bin Breadth",
     min_value=1.0,
-    value=8.0
+    value=16.0
 )
 
 bin_h = st.sidebar.number_input(
     "Bin Height",
     min_value=1.0,
-    value=6.0
+    value=10.0
 )
 
 # =========================================================
@@ -66,7 +66,45 @@ pkg_h = st.sidebar.number_input(
     min_value=1.0,
     value=5.0
 )
+# =========================================================
+# TOLERANCE
+# =========================================================
+st.sidebar.header("Fit Tolerance")
 
+fit_mode = st.sidebar.radio(
+    "Tolerance Method",
+    [
+        "Fixed Clearance",
+        "Percentage Tolerance"
+    ]
+)
+
+if fit_mode == "Fixed Clearance":
+
+    clearance = st.sidebar.number_input(
+        "Clearance",
+        min_value=0.0,
+        value=0.25,
+        step=0.05
+    )
+
+    effective_bin_l = bin_l - clearance
+    effective_bin_b = bin_b - clearance
+    effective_bin_h = bin_h - clearance
+
+else:
+
+    tolerance_pct = st.sidebar.slider(
+        "Tolerance (%)",
+        0.0,
+        10.0,
+        2.0,
+        0.5
+    )
+
+    effective_bin_l = bin_l * (1 - tolerance_pct / 100)
+    effective_bin_b = bin_b * (1 - tolerance_pct / 100)
+    effective_bin_h = bin_h * (1 - tolerance_pct / 100)
 # =========================================================
 # SEARCH SETTINGS
 # =========================================================
@@ -167,24 +205,24 @@ def get_box_edges(vertices):
 # =========================================================
 
 
-def find_simple_fit(bin_l, bin_b, bin_h, pkg_l, pkg_b, pkg_h):
+def find_simple_fit(effective_bin_l, effective_bin_b, effective_bin_h, pkg_l, pkg_b, pkg_h):
 
     for dims in set(permutations([pkg_l, pkg_b, pkg_h])):
 
         w, d, h = dims
 
         if (
-            w <= bin_l and
-            d <= bin_b and
-            h <= bin_h
+            w <= effective_bin_l and
+            d <= effective_bin_b and
+            h <= effective_bin_h
         ):
             return True, dims
 
     return False, None
 def auto_find_fit(
-    bin_l,
-    bin_b,
-    bin_h,
+    effective_bin_l,
+    effective_bin_b,
+    effective_bin_h,
     pkg_vertices,
     rotation_step
 ):
@@ -218,14 +256,14 @@ def auto_find_fit(
 
                 # CHECK FIT
                 if (
-                    width <= bin_l and
-                    depth <= bin_b and
-                    height <= bin_h
+                    width <= effective_bin_l and
+                    depth <= effective_bin_b and
+                    height <= effective_bin_h
                 ):
 
                     # FIND UNUSED VOLUME
                     unused_volume = (
-                        (bin_l * bin_b * bin_h)
+                        ( effective_bin_l * effective_bin_b * effective_bin_h)
                         -
                         (width * depth * height)
                     )
@@ -277,9 +315,9 @@ pkg_vertices = create_vertices(
 with st.spinner("Finding best rotation..."):
 
     simple_fit, simple_dims = find_simple_fit(
-        bin_l,
-        bin_b,
-        bin_h,
+        effective_bin_l,
+        effective_bin_b,
+        effective_bin_h,
         pkg_l,
         pkg_b,
         pkg_h
@@ -308,9 +346,9 @@ with st.spinner("Finding best rotation..."):
     else:
 
         fits, fitted_package, best_angles, best_dims = auto_find_fit(
-            bin_l,
-            bin_b,
-            bin_h,
+            effective_bin_l,
+            effective_bin_b,
+            effective_bin_h,
             pkg_vertices,
             rotation_step
         )
@@ -319,7 +357,16 @@ with st.spinner("Finding best rotation..."):
 # RESULTS
 # =========================================================
 
+
 st.subheader("📊 Fit Result")
+
+st.write("### Effective Bin Dimensions")
+st.write(
+    f"{effective_bin_l:.2f} × "
+    f"{effective_bin_b:.2f} × "
+    f"{effective_bin_h:.2f}"
+)
+
 
 if fits:
 
@@ -348,7 +395,7 @@ else:
     st.error("❌ Package DOES NOT fit")
 
 # =========================================================
-# CENTER PACKAGE
+# FLOOR FIT FOR PACKAGE
 # =========================================================
 
 if fits:
@@ -358,9 +405,9 @@ if fits:
     min_z = fitted_package[:, 2].min()
 
     fitted_package += np.array([
-        (-bin_l / 2) - min_x,
-        (-bin_b / 2) - min_y,
-        (-bin_h / 2) - min_z
+        (-effective_bin_l / 2) - min_x,
+        (-effective_bin_b / 2) - min_y,
+        (-effective_bin_h / 2) - min_z
     ])
 
 # =========================================================
